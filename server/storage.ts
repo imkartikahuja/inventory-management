@@ -13,6 +13,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUsers(): Promise<User[]>; // Added getUsers method
 
   // Product operations
   getProducts(): Promise<Product[]>;
@@ -62,9 +63,15 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
-    const user: User = { ...insertUser, id, role: "staff" };
+    // Make the first user an admin
+    const role = (await this.getUsers()).length === 0 ? "admin" : "staff";
+    const user: User = { ...insertUser, id, role };
     this.users.set(id, user);
     return user;
+  }
+
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 
   // Product operations
@@ -86,7 +93,7 @@ export class MemStorage implements IStorage {
   async updateProduct(id: number, updates: Partial<Product>): Promise<Product> {
     const existing = await this.getProduct(id);
     if (!existing) throw new Error("Product not found");
-    
+
     const updated = { ...existing, ...updates };
     this.products.set(id, updated);
     return updated;
@@ -112,11 +119,11 @@ export class MemStorage implements IStorage {
       id,
       timestamp: new Date(),
     };
-    
+
     // Update product stock
     const product = await this.getProduct(movement.productId);
     if (!product) throw new Error("Product not found");
-    
+
     const stockChange = movement.type === "in" ? movement.quantity : -movement.quantity;
     await this.updateProduct(product.id, {
       currentStock: product.currentStock + stockChange
