@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Barcode } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Command,
   CommandEmpty,
@@ -25,6 +25,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useBarcodeScannerInput } from "@/hooks/use-barcode-scanner";
+import { cn } from "@/lib/utils";
 
 interface StockMovementFormProps {
   onSubmit: (data: InsertStockMovement) => void;
@@ -35,6 +37,7 @@ interface StockMovementFormProps {
 export function StockMovementForm({ onSubmit, isLoading, products }: StockMovementFormProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [scanFeedback, setScanFeedback] = useState<"success" | "error" | null>(null);
 
   const form = useForm<InsertStockMovement>({
     resolver: zodResolver(insertStockMovementSchema),
@@ -44,6 +47,32 @@ export function StockMovementForm({ onSubmit, isLoading, products }: StockMoveme
       quantity: 1,
       reason: "",
     },
+  });
+
+  // Clear scan feedback after 2 seconds
+  useEffect(() => {
+    if (scanFeedback) {
+      const timer = setTimeout(() => setScanFeedback(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [scanFeedback]);
+
+  // Handle barcode scanning
+  const { isScanning } = useBarcodeScannerInput({
+    onScan: (barcode) => {
+      const product = products.find(p => p.sku === barcode);
+      if (product) {
+        form.setValue("productId", product.id);
+        setScanFeedback("success");
+        // Focus quantity field after successful scan
+        const quantityInput = document.getElementById("quantity");
+        if (quantityInput) {
+          quantityInput.focus();
+        }
+      } else {
+        setScanFeedback("error");
+      }
+    }
   });
 
   const filteredProducts = products.filter((product) => {
@@ -68,7 +97,12 @@ export function StockMovementForm({ onSubmit, isLoading, products }: StockMoveme
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between"
+              className={cn(
+                "w-full justify-between",
+                isScanning && "border-blue-500 ring-2 ring-blue-500",
+                scanFeedback === "success" && "border-green-500 ring-2 ring-green-500",
+                scanFeedback === "error" && "border-red-500 ring-2 ring-red-500"
+              )}
             >
               {selectedProduct
                 ? `${selectedProduct.name} (${selectedProduct.sku})`
