@@ -14,17 +14,17 @@ import Reports from "@/pages/reports";
 function Router() {
   return (
     <Switch>
+      <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/stock-movements" component={StockMovements} />
       <ProtectedRoute path="/reports" component={Reports} />
-      <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -34,5 +34,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;
