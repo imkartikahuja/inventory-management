@@ -38,13 +38,16 @@ export default function AuthPage() {
   });
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       <div className="flex-1 flex items-center justify-center p-8">
         <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">
-              Inventory Management System
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">
+              Dagcros Inventory
             </CardTitle>
+            <p className="text-center text-muted-foreground">
+              Sign in to manage your inventory
+            </p>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login">
@@ -129,7 +132,7 @@ export default function AuthPage() {
       <div className="hidden lg:flex flex-1 bg-primary items-center justify-center p-12">
         <div className="max-w-lg text-primary-foreground">
           <h1 className="text-4xl font-bold mb-6">
-            Welcome to Your Inventory Hub
+            Welcome to Dagcros Inventory Hub
           </h1>
           <p className="text-lg opacity-90">
             Streamline your inventory management with our powerful system.
