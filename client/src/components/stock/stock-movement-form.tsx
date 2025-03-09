@@ -11,7 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Barcode } from "lucide-react";
+import { useState } from "react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface StockMovementFormProps {
   onSubmit: (data: InsertStockMovement) => void;
@@ -20,6 +33,9 @@ interface StockMovementFormProps {
 }
 
 export function StockMovementForm({ onSubmit, isLoading, products }: StockMovementFormProps) {
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
   const form = useForm<InsertStockMovement>({
     resolver: zodResolver(insertStockMovementSchema),
     defaultValues: {
@@ -30,24 +46,63 @@ export function StockMovementForm({ onSubmit, isLoading, products }: StockMoveme
     },
   });
 
+  const filteredProducts = products.filter((product) => {
+    const searchLower = searchValue.toLowerCase();
+    return (
+      product.sku.toLowerCase().includes(searchLower) ||
+      product.name.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const selectedProduct = products.find(
+    (product) => product.id === form.watch("productId")
+  );
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="product">Product</Label>
-        <Select
-          onValueChange={(value) => form.setValue("productId", parseInt(value))}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a product" />
-          </SelectTrigger>
-          <SelectContent>
-            {products.map((product) => (
-              <SelectItem key={product.id} value={product.id.toString()}>
-                {product.name} ({product.sku})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>Product</Label>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between"
+            >
+              {selectedProduct
+                ? `${selectedProduct.name} (${selectedProduct.sku})`
+                : "Select or scan a product..."}
+              <Barcode className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0">
+            <Command>
+              <CommandInput
+                placeholder="Search by name or scan barcode..."
+                value={searchValue}
+                onValueChange={setSearchValue}
+                className="h-9"
+              />
+              <CommandEmpty>No product found.</CommandEmpty>
+              <CommandGroup>
+                {filteredProducts.map((product) => (
+                  <CommandItem
+                    key={product.id}
+                    value={product.sku}
+                    onSelect={() => {
+                      form.setValue("productId", product.id);
+                      setOpen(false);
+                      setSearchValue("");
+                    }}
+                  >
+                    {product.name} ({product.sku})
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="space-y-2">
