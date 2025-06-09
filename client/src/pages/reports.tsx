@@ -12,7 +12,10 @@ import {
 } from "recharts";
 import { type Product, type StockMovement } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Calendar } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { useState } from "react";
+import { format } from "date-fns";
 
 function downloadCSV(data: any[], filename: string) {
   const headers = Object.keys(data[0]);
@@ -32,6 +35,8 @@ function downloadCSV(data: any[], filename: string) {
 }
 
 export default function Reports() {
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
@@ -39,6 +44,33 @@ export default function Reports() {
   const { data: movements } = useQuery<StockMovement[]>({
     queryKey: ["/api/stock-movements"],
   });
+
+  const { data: dailyMovements } = useQuery({
+    queryKey: ["/api/stock-movements/daily", selectedDate?.toISOString()],
+    queryFn: async () => {
+      if (!selectedDate) return null;
+      const response = await fetch(`/api/stock-movements/daily?date=${selectedDate.toISOString()}`);
+      if (!response.ok) throw new Error('Failed to fetch daily movements');
+      return response.json();
+    },
+    enabled: !!selectedDate,
+  });
+
+  const handleExportDailyReport = () => {
+    if (!dailyMovements || !selectedDate) return;
+    
+    const exportData = dailyMovements.map((movement: any) => ({
+      Date: format(new Date(movement.timestamp), "yyyy-MM-dd HH:mm:ss"),
+      "Product Name": movement.productName,
+      SKU: movement.productSku,
+      Category: movement.productCategory,
+      Type: movement.type === "in" ? "Stock In" : "Stock Out",
+      Quantity: movement.quantity,
+      Reason: movement.reason,
+    }));
+
+    downloadCSV(exportData, `daily-stock-movements-${format(selectedDate, "yyyy-MM-dd")}.csv`);
+  };
 
   if (!products || !movements) return null;
 
@@ -75,14 +107,56 @@ export default function Reports() {
       <div className="flex-1 p-8 overflow-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Reports</h1>
-          <Button
-            variant="outline"
-            onClick={() => downloadCSV(exportProducts, "inventory-report.csv")}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => downloadCSV(exportProducts, "inventory-report.csv")}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Inventory
+            </Button>
+          </div>
         </div>
+
+        {/* Daily Stock Movement Export Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Daily Stock Movement Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4 items-end">
+              <div className="flex-1 max-w-xs">
+                <label className="text-sm font-medium mb-2 block">
+                  Select Date
+                </label>
+                <DatePicker
+                  date={selectedDate}
+                  onDateChange={setSelectedDate}
+                  placeholder="Choose a date..."
+                />
+              </div>
+              <Button
+                onClick={handleExportDailyReport}
+                disabled={!selectedDate || !dailyMovements?.length}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Daily Report
+              </Button>
+            </div>
+            {selectedDate && (
+              <div className="mt-4 text-sm text-muted-foreground">
+                {dailyMovements?.length ? (
+                  <span>Found {dailyMovements.length} stock movements for {format(selectedDate, "PPP")}</span>
+                ) : (
+                  <span>No stock movements found for {format(selectedDate, "PPP")}</span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
