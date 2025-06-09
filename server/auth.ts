@@ -58,25 +58,44 @@ export function setupAuth(app: Express) {
     done(null, user);
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    const existingUser = await storage.getUserByUsername(req.body.username);
-    if (existingUser) {
-      return res.status(400).send("Username already exists");
-    }
-
-    const user = await storage.createUser({
-      ...req.body,
-      password: await hashPassword(req.body.password),
-    });
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
-  });
-
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
     res.status(200).json(req.user);
+  });
+
+  app.post("/api/create-user", async (req, res, next) => {
+    const { username, password, godPassword } = req.body;
+
+    const GOD_PASSWORD = process.env.GOD_PASSWORD ;
+    if (!godPassword || godPassword !== GOD_PASSWORD) {
+      return res.status(403).json({ message: "Invalid god password" });
+    }
+
+    // Validate required fields
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required" });
+    }
+
+    try {
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      // Create the user
+      const user = await storage.createUser({
+        username,
+        password: await hashPassword(password),
+      });
+
+      res.status(201).json({ 
+        message: "User created successfully", 
+        user: { id: user.id, username: user.username, role: user.role } 
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.post("/api/logout", (req, res, next) => {

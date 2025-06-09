@@ -5,7 +5,7 @@ import {
   users, products, stockMovements
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -28,6 +28,7 @@ export interface IStorage {
 
   // Stock movement operations
   getStockMovements(productId?: number): Promise<StockMovement[]>;
+  getStockMovementsByDateRange(startDate: Date, endDate: Date): Promise<StockMovement[]>;
   createStockMovement(movement: InsertStockMovement & { userId: number }): Promise<StockMovement>;
 
   sessionStore: session.Store;
@@ -102,6 +103,17 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(stockMovements.productId, productId));
     }
     return await query;
+  }
+
+  async getStockMovementsByDateRange(startDate: Date, endDate: Date): Promise<StockMovement[]> {
+    return await db.select().from(stockMovements)
+      .where(
+        and(
+          gte(stockMovements.timestamp, startDate),
+          lte(stockMovements.timestamp, endDate)
+        )
+      )
+      .orderBy(desc(stockMovements.timestamp));
   }
 
   async createStockMovement(

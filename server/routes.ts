@@ -67,6 +67,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(movements);
   });
 
+  app.get("/api/stock-movements/daily", requireAuth, async (req, res) => {
+    const date = req.query.date as string;
+    if (!date) {
+      return res.status(400).json({ message: "Date parameter is required" });
+    }
+
+    try {
+      const selectedDate = new Date(date);
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const movements = await storage.getStockMovementsByDateRange(startOfDay, endOfDay);
+      
+      // Get product details for the movements
+      const products = await storage.getProducts();
+      const productMap = products.reduce((acc, product) => {
+        acc[product.id] = product;
+        return acc;
+      }, {} as Record<number, any>);
+
+      // Enhance movements with product details
+      const enhancedMovements = movements.map(movement => ({
+        ...movement,
+        productName: productMap[movement.productId]?.name || 'Unknown Product',
+        productSku: productMap[movement.productId]?.sku || 'Unknown SKU',
+        productCategory: productMap[movement.productId]?.category || 'Unknown Category'
+      }));
+
+      res.json(enhancedMovements);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid date format" });
+    }
+  });
+
   app.post("/api/stock-movements", requireAuth, async (req, res) => {
     const parsed = insertStockMovementSchema.safeParse(req.body);
     if (!parsed.success) {
