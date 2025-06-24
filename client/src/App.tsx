@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
 import StockMovements from "@/pages/stock-movements";
 import Reports from "@/pages/reports";
+import SummaryReport from "@/pages/summary-report";
 
 function Router() {
   return (
@@ -19,6 +20,7 @@ function Router() {
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/stock-movements" component={StockMovements} />
       <ProtectedRoute path="/reports" component={Reports} />
+      <ProtectedRoute path="/summary-report" component={SummaryReport} />
       <Route component={NotFound} />
     </Switch>
   );

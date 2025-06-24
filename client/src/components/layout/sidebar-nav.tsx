@@ -19,6 +19,7 @@ const items = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/stock-movements", label: "Stock Movements", icon: ArrowRightLeft },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/summary-report", label: "Summary Report", icon: BarChart3 },
 ];
 
 export function SidebarNav() {

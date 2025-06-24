@@ -121,6 +121,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reports
+  app.get("/api/reports/summary", requireAuth, async (req, res) => {
+    const { startDate, endDate } = req.query;
+
+    try {
+      const report = await storage.getSummaryReport(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json(report);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid date format" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -142,7 +142,7 @@ export function StockMovementForm({ onSubmit, isLoading, products }: StockMoveme
       <div className="space-y-2">
         <Label htmlFor="type">Movement Type</Label>
         <Select
-          onValueChange={(value) => form.setValue("type", value as "in" | "out")}
+          onValueChange={(value) => form.setValue("type", value as "in" | "out" | "return")}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select movement type" />
@@ -150,6 +150,7 @@ export function StockMovementForm({ onSubmit, isLoading, products }: StockMoveme
           <SelectContent>
             <SelectItem value="in">Stock In</SelectItem>
             <SelectItem value="out">Stock Out</SelectItem>
+            <SelectItem value="return">Return</SelectItem>
           </SelectContent>
         </Select>
       </div>

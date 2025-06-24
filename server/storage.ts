@@ -5,7 +5,7 @@ import {
   users, products, stockMovements
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, sum } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -30,6 +30,7 @@ export interface IStorage {
   getStockMovements(productId?: number): Promise<StockMovement[]>;
   getStockMovementsByDateRange(startDate: Date, endDate: Date): Promise<StockMovement[]>;
   createStockMovement(movement: InsertStockMovement & { userId: number }): Promise<StockMovement>;
+  getSummaryReport(startDate?: Date, endDate?: Date): Promise<any[]>;
 
   sessionStore: session.Store;
 }
@@ -98,11 +99,10 @@ export class DatabaseStorage implements IStorage {
 
   // Stock movement operations
   async getStockMovements(productId?: number): Promise<StockMovement[]> {
-    let query = db.select().from(stockMovements);
-    if (productId) {
-      query = query.where(eq(stockMovements.productId, productId));
-    }
-    return await query;
+    return db
+      .select()
+      .from(stockMovements)
+      .where(productId ? eq(stockMovements.productId, productId) : undefined);
   }
 
   async getStockMovementsByDateRange(startDate: Date, endDate: Date): Promise<StockMovement[]> {
@@ -124,7 +124,7 @@ export class DatabaseStorage implements IStorage {
     if (!product) throw new Error("Product not found");
 
     // Calculate new stock level
-    const stockChange = movement.type === "in" ? movement.quantity : -movement.quantity;
+    const stockChange = movement.type === "in" || movement.type === "return" ? movement.quantity : -movement.quantity;
     const newStock = product.currentStock + stockChange;
 
     // Create stock movement and update product stock in a transaction
@@ -146,6 +146,69 @@ export class DatabaseStorage implements IStorage {
     });
 
     return stockMovement;
+  }
+
+  async getSummaryReport(startDate?: Date, endDate?: Date): Promise<any[]> {
+    // 1. Get all products
+    const allProducts = await this.getProducts();
+
+    // 2. Get stock movements within the date range
+    const movements = await db
+      .select({
+        productId: stockMovements.productId,
+        type: stockMovements.type,
+        quantity: stockMovements.quantity,
+      })
+      .from(stockMovements)
+      .where(
+        startDate && endDate
+          ? and(
+              gte(stockMovements.timestamp, startDate),
+              lte(stockMovements.timestamp, endDate)
+            )
+          : undefined
+      );
+
+    // 3. Process data
+    const movementsByProduct = movements.reduce((acc, movement) => {
+      if (!acc[movement.productId]) {
+        acc[movement.productId] = {
+          scannedIn: 0,
+          scannedOut: 0,
+          returns: 0,
+        };
+      }
+
+      if (movement.type === "in") {
+        acc[movement.productId].scannedIn += movement.quantity;
+      } else if (movement.type === "out") {
+        acc[movement.productId].scannedOut += movement.quantity;
+      } else if (movement.type === "return") {
+        acc[movement.productId].returns += movement.quantity;
+      }
+
+      return acc;
+    }, {} as Record<number, { scannedIn: number; scannedOut: number; returns: number }>);
+
+    // 4. Combine and calculate
+    const report = allProducts.map(product => {
+      const movements = movementsByProduct[product.id] || { scannedIn: 0, scannedOut: 0, returns: 0 };
+      const { scannedIn, scannedOut, returns } = movements;
+      
+      const currentClosingStock = product.currentStock;
+      const initialQuantity = currentClosingStock - (scannedIn + returns - scannedOut);
+
+      return {
+        productCode: product.sku,
+        initialQuantity,
+        scannedIn,
+        scannedOut,
+        returns,
+        currentClosingStock,
+      };
+    });
+
+    return report;
   }
 }
 

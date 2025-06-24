@@ -34,8 +34,20 @@ export function StockMovementList({ movements, products }: StockMovementListProp
             </TableCell>
             <TableCell>{products[movement.productId]}</TableCell>
             <TableCell>
-              <Badge variant={movement.type === "in" ? "default" : "secondary"}>
-                {movement.type === "in" ? "Stock In" : "Stock Out"}
+              <Badge
+                variant={
+                  movement.type === "in"
+                    ? "default"
+                    : movement.type === "out"
+                    ? "secondary"
+                    : "outline"
+                }
+              >
+                {movement.type === "in"
+                  ? "Stock In"
+                  : movement.type === "out"
+                  ? "Stock Out"
+                  : "Return"}
               </Badge>
             </TableCell>
             <TableCell>{movement.quantity}</TableCell>

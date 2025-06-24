@@ -26,7 +26,7 @@ export const products = pgTable("products", {
 export const stockMovements = pgTable("stock_movements", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull(),
-  type: text("type").notNull(), // 'in' or 'out'
+  type: text("type").notNull(), // 'in', 'out', or 'return'
   quantity: integer("quantity").notNull(),
   reason: text("reason").notNull(),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
@@ -47,7 +47,9 @@ export const insertProductSchema = createInsertSchema(products).pick({
   currentStock: true,
 });
 
-export const insertStockMovementSchema = createInsertSchema(stockMovements).pick({
+export const insertStockMovementSchema = createInsertSchema(stockMovements, {
+  type: z.enum(["in", "out", "return"]),
+}).pick({
   productId: true,
   type: true,
   quantity: true,
